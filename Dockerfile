@@ -22,10 +22,12 @@ RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoload
 # Runtime: Nginx + PHP-FPM in one container
 FROM php:8.3-fpm-bookworm AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    nginx supervisor libicu72 libzip4 libonig5 libxml2 \
-    libfreetype6 libjpeg62-turbo libpng16-16 libcurl4 \
+    nginx supervisor libicu-dev libzip-dev libonig-dev libxml2-dev \
+    libfreetype6-dev libjpeg62-turbo-dev libpng-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" pdo_mysql mbstring bcmath exif pcntl intl zip gd opcache \
+    && apt-get purge -y --auto-remove libicu-dev libzip-dev libonig-dev libxml2-dev \
+       libfreetype6-dev libjpeg62-turbo-dev libpng-dev \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /run/nginx /var/log/supervisor
 
