@@ -66,7 +66,8 @@ class AdminEventController extends Controller
 
     public function storeFormula(Request $request, Event $event)
     {
-        $data = $request->validate(['correct_points' => ['required', 'numeric'], 'wrong_points' => ['required', 'numeric'], 'unanswered_points' => ['required', 'numeric'], 'scale_min' => ['required', 'numeric'], 'scale_max' => ['required', 'numeric', 'gt:scale_min'], 'partial_scoring' => ['required', 'boolean']]);
+        $data = $request->validate(['correct_points' => ['required', 'numeric'], 'wrong_points' => ['required', 'numeric'], 'unanswered_points' => ['required', 'numeric'], 'scale_min' => ['required', 'numeric'], 'scale_max' => ['required', 'numeric', 'gt:scale_min'], 'partial_scoring' => ['required', 'boolean'], 'scoring_mode' => ['nullable', 'in:classic,irt']]);
+        $data['scoring_mode'] = $data['scoring_mode'] ?? 'classic';
         DB::transaction(function () use ($request, $event, $data) {
             DB::table('scoring_formulas')->where('event_id', $event->id)->update(['status' => 'retired', 'updated_at' => now()]);
             $version = (int) DB::table('scoring_formulas')->where('event_id', $event->id)->max('version') + 1;
@@ -97,8 +98,13 @@ class AdminEventController extends Controller
         return back()->with('success', 'Aturan hasil, ranking, fullscreen, dan concurrent session diperbarui.');
     }
 
-    public function finalizeResults(Request $request, Event $event, RankingService $ranking)
+    public function finalizeResults(Request $request, Event $event, RankingService $ranking, ScoringService $scoring)
     {
+        $mode = DB::table('scoring_formulas')->where('event_id', $event->id)->where('status', 'active')->latest('version')->value('scoring_mode');
+        if ($mode === 'irt') {
+            $scoring->recalculateEventIrt($event->id);
+        }
+
         DB::transaction(function () use ($event, $ranking) {
             DB::table('scores')->whereIn('attempt_id', function ($query) use ($event) {
                 $query->select('a.id')->from('exam_attempts as a')->join('event_registrations as r', 'r.id', '=', 'a.registration_id')->where('r.event_id', $event->id);
@@ -113,13 +119,19 @@ class AdminEventController extends Controller
 
     public function rescore(Request $request, Event $event, ScoringService $scoring)
     {
-        $attemptIds = DB::table('exam_attempts as a')->join('event_registrations as r', 'r.id', '=', 'a.registration_id')->where('r.event_id', $event->id)->whereIn('a.status', ['submitted', 'scored'])->pluck('a.id');
-        foreach ($attemptIds as $attemptId) {
-            $scoring->calculate(ExamAttempt::findOrFail($attemptId));
+        $mode = DB::table('scoring_formulas')->where('event_id', $event->id)->where('status', 'active')->latest('version')->value('scoring_mode');
+        if ($mode === 'irt') {
+            $count = $scoring->recalculateEventIrt($event->id);
+        } else {
+            $attemptIds = DB::table('exam_attempts as a')->join('event_registrations as r', 'r.id', '=', 'a.registration_id')->where('r.event_id', $event->id)->whereIn('a.status', ['submitted', 'scored'])->pluck('a.id');
+            foreach ($attemptIds as $attemptId) {
+                $scoring->calculate(ExamAttempt::findOrFail($attemptId));
+            }
+            $count = $attemptIds->count();
         }
-        $this->audit($request, 'event.rescored', $event->id, ['attempt_count' => $attemptIds->count()]);
+        $this->audit($request, 'event.rescored', $event->id, ['attempt_count' => $count, 'scoring_mode' => $mode ?? 'classic']);
 
-        return back()->with('success', $attemptIds->count().' attempt dihitung ulang dari snapshot tanpa mengubah jawaban.');
+        return back()->with('success', $count.' attempt dihitung ulang dari snapshot tanpa mengubah jawaban.');
     }
 
     public function publishResults(Request $request, Event $event)

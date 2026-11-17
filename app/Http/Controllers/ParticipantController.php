@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PtnProgram;
 use App\Services\AttemptReviewService;
+use App\Services\PtnRationalizationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -94,7 +96,7 @@ class ParticipantController extends Controller
         return back()->with('success', 'Pilihan mata uji berhasil disimpan.');
     }
 
-    public function results(Request $request, AttemptReviewService $reviews)
+    public function results(Request $request, AttemptReviewService $reviews, PtnRationalizationService $rationalizationService)
     {
         [$participant, $registration] = $this->context($request);
         $published = (bool) $registration->result_published_at && now()->gte($registration->result_published_at);
@@ -109,8 +111,10 @@ class ParticipantController extends Controller
 
         $domains = $scores->flatMap(fn ($score) => collect(json_decode($score->components, true) ?: [])->map(fn ($value, $domain) => ['domain' => $domain, ...$value]))->sortByDesc('percentage')->values();
         $history = DB::table('event_registrations as r')->join('events as e', 'e.id', '=', 'r.event_id')->leftJoin('exam_attempts as a', 'a.registration_id', '=', 'r.id')->leftJoin('scores as s', fn ($join) => $join->on('s.attempt_id', '=', 'a.id')->where('s.status', 'finalized'))->where('r.participant_id', $participant->id)->groupBy('r.id', 'e.name', 'e.result_published_at')->select('r.id', 'e.name as event', 'e.result_published_at', DB::raw('AVG(s.scaled_score) as average_score'), DB::raw('COUNT(s.id) as scored_subjects'))->orderByDesc('r.id')->get();
+        $average = $scores->count() ? (float) $scores->avg('scaled_score') : 0.0;
+        $rationalization = $published ? $rationalizationService->evaluate($participant, $average) : ['targets' => [], 'recommendations' => []];
 
-        return Inertia::render('Participant/Results', ['participant' => ['name' => $request->user()->name, 'number' => $registration->participant_number, 'school' => $participant->school?->name], 'scores' => $scores, 'ranking' => $ranking, 'domains' => $domains, 'discussion' => $discussion, 'history' => $history, 'published' => $published]);
+        return Inertia::render('Participant/Results', ['participant' => ['name' => $request->user()->name, 'number' => $registration->participant_number, 'school' => $participant->school?->name], 'scores' => $scores, 'ranking' => $ranking, 'domains' => $domains, 'discussion' => $discussion, 'history' => $history, 'published' => $published, 'rationalization' => $rationalization]);
     }
 
     public function ranking(Request $request)
@@ -178,20 +182,35 @@ class ParticipantController extends Controller
     public function profile(Request $request)
     {
         [$participant] = $this->context($request);
+        $ptnPrograms = PtnProgram::orderBy('university_name')->orderBy('program_name')->get(['id', 'university_name', 'university_code', 'program_name', 'degree', 'category', 'passing_score']);
 
-        return Inertia::render('Participant/Profile', ['participant' => $participant, 'user' => $request->user()->only(['name', 'email', 'phone'])]);
+        return Inertia::render('Participant/Profile', ['participant' => $participant, 'user' => $request->user()->only(['name', 'email', 'phone']), 'ptnPrograms' => $ptnPrograms]);
     }
 
     public function updateProfile(Request $request)
     {
-        $data = $request->validate(['name' => ['required', 'max:120'], 'phone' => ['required', 'max:30', Rule::unique('users')->ignore($request->user()->id)], 'grade' => ['required', 'max:10'], 'province' => ['required', 'max:120'], 'city' => ['required', 'max:120']]);
+        $data = $request->validate([
+            'name' => ['required', 'max:120'],
+            'phone' => ['required', 'max:30', Rule::unique('users')->ignore($request->user()->id)],
+            'grade' => ['required', 'max:10'],
+            'province' => ['required', 'max:120'],
+            'city' => ['required', 'max:120'],
+            'target_program_1_id' => ['nullable', 'integer', 'exists:ptn_programs,id'],
+            'target_program_2_id' => ['nullable', 'integer', 'exists:ptn_programs,id'],
+        ]);
         [$participant] = $this->context($request);
         DB::transaction(function () use ($request, $participant, $data) {
             $request->user()->update(['name' => $data['name'], 'phone' => $data['phone']]);
-            $participant->update(['grade' => $data['grade'], 'province' => $data['province'], 'city' => $data['city']]);
+            $participant->update([
+                'grade' => $data['grade'],
+                'province' => $data['province'],
+                'city' => $data['city'],
+                'target_program_1_id' => $data['target_program_1_id'] ?? null,
+                'target_program_2_id' => $data['target_program_2_id'] ?? null,
+            ]);
         });
 
-        return back()->with('success', 'Profil berhasil diperbarui.');
+        return back()->with('success', 'Profil & target PTN berhasil diperbarui.');
     }
 
     public function notifications(Request $request)
