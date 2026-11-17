@@ -1,6 +1,17 @@
 name: Docker image validation
 
 on:
+  push:
+    branches: [deployment/production]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "docker/**"
+      - "composer.json"
+      - "composer.lock"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/docker-build.yml"
   pull_request:
     branches: [main]
     paths:
