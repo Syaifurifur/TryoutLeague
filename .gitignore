@@ -3,3 +3,4 @@ vendor/
 /storage/*.key
 /storage/artifact-runtime/node_modules/
 .env
+/public/hot
