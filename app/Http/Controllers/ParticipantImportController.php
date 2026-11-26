@@ -67,7 +67,7 @@ class ParticipantImportController extends Controller
             foreach (collect($locked->payload)->where('valid', true) as $row) {
                 $user = User::create(['name' => $row['name'], 'email' => $row['email'], 'phone' => $row['phone'], 'role' => 'participant', 'status' => 'active', 'password' => Hash::make($row['password'] ?: Str::password(12))]);
                 $participantId = DB::table('participants')->insertGetId(['user_id' => $user->id, 'school_id' => $row['school_id'], 'nisn' => $row['nisn'], 'grade' => $row['grade'], 'province' => $row['province'], 'city' => $row['city'], 'consent' => true, 'created_at' => now(), 'updated_at' => now()]);
-                $number = 'TKA-'.$locked->event_id.'-'.strtoupper(Str::random(8));
+                $number = 'SNBT-'.$locked->event_id.'-'.strtoupper(Str::random(8));
                 $registrationId = DB::table('event_registrations')->insertGetId(['event_id' => $locked->event_id, 'participant_id' => $participantId, 'participant_number' => $number, 'source' => 'school', 'status' => 'eligible', 'verified_at' => now(), 'created_at' => now(), 'updated_at' => now()]);
                 foreach (DB::table('event_subjects')->where('event_id', $locked->event_id)->where('is_required', true)->pluck('subject_id') as $subjectId) {
                     DB::table('participant_subjects')->insert(['registration_id' => $registrationId, 'subject_id' => $subjectId, 'is_locked' => true, 'created_at' => now(), 'updated_at' => now()]);

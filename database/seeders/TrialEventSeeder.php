@@ -12,14 +12,14 @@ class TrialEventSeeder extends Seeder
         DB::transaction(function () {
             $now = now();
             $adminId = DB::table('users')->whereIn('role', ['super_admin', 'admin'])->orderBy('id')->value('id');
-            $event = DB::table('events')->where('code', 'SIMULASI-TKA-01')->first();
+            $event = DB::table('events')->where('code', 'SIMULASI-SNBT-01')->first();
 
             if (! $event) {
                 $eventId = DB::table('events')->insertGetId([
-                    'code' => 'SIMULASI-TKA-01',
-                    'name' => 'Simulasi Pelaksanaan Tryout TKA',
-                    'slug' => 'simulasi-pelaksanaan-tryout-tka',
-                    'description' => 'Event khusus untuk mencoba seluruh alur pelaksanaan tryout: memilih mata uji, memulai sesi, autosave, submit, scoring, dan publikasi hasil.',
+                    'code' => 'SIMULASI-SNBT-01',
+                    'name' => 'Simulasi Pelaksanaan Tryout UTBK-SNBT',
+                    'slug' => 'simulasi-pelaksanaan-tryout-snbt',
+                    'description' => 'Event khusus untuk mencoba seluruh alur pelaksanaan tryout UTBK-SNBT: subtes TPS & Literasi, memulai sesi, autosave, submit, scoring IRT, dan publikasi hasil.',
                     'terms' => 'Event simulasi. Jawaban dan nilai hanya digunakan untuk pengujian sistem.',
                     'registration_open_at' => $now->copy()->subDay(),
                     'registration_close_at' => $now->copy()->addDays(7),
@@ -66,7 +66,7 @@ class TrialEventSeeder extends Seeder
                 ]);
             }
 
-            $subjects = DB::table('subjects')->whereIn('code', ['BIN', 'MAT', 'BIG'])->orderByRaw("FIELD(code, 'BIN', 'MAT', 'BIG')")->get();
+            $subjects = DB::table('subjects')->whereIn('code', ['PU', 'PK', 'LBI', 'PM'])->orderByRaw("FIELD(code, 'PU', 'PK', 'LBI', 'PM')")->get();
             foreach ($subjects as $subject) {
                 DB::table('event_subjects')->insertOrIgnore([
                     'event_id' => $event->id,
@@ -135,7 +135,7 @@ class TrialEventSeeder extends Seeder
                     $registrationId = DB::table('event_registrations')->insertGetId([
                         'event_id' => $event->id,
                         'participant_id' => $participantId,
-                        'participant_number' => 'SIM-TKA-000001',
+                        'participant_number' => 'SIM-SNBT-000001',
                         'source' => 'individual',
                         'status' => 'eligible',
                         'verified_at' => $now,

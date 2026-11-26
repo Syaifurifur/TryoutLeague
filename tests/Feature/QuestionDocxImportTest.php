@@ -22,7 +22,7 @@ class QuestionDocxImportTest extends TestCase
         Storage::fake('local');
         $this->seed(DatabaseSeeder::class);
         $admin = User::where('email', 'admin@tkajuara.id')->firstOrFail();
-        $subject = DB::table('subjects')->where('code', 'MAT')->first();
+        $subject = DB::table('subjects')->where('code', 'PK')->first();
 
         $response = $this->actingAs($admin)->post('/admin/questions/import/preview', [
             'subject_id' => $subject->id,

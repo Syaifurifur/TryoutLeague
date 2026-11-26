@@ -5,10 +5,11 @@ namespace App\Services;
 use App\Models\ExamAttempt;
 use App\Models\Score;
 use App\Models\ScoringFormula;
+use Illuminate\Support\Facades\DB;
 
 class ScoringService
 {
-    public function calculate(ExamAttempt $attempt): Score
+    public function calculate(ExamAttempt $attempt, array $irtWeights = []): Score
     {
         $attempt->load(['questions.question.options', 'questions.answer', 'registration', 'scoringFormula']);
         $formula = $attempt->scoringFormula ?: ScoringFormula::query()
@@ -30,7 +31,7 @@ class ScoringService
         foreach ($attempt->questions as $snapshot) {
             $question = $snapshot->question;
             $frozen = $snapshot->question_snapshot;
-            $weight = (float) ($frozen['weight'] ?? $question->weight);
+            $weight = (float) ($irtWeights[$question->id] ?? $frozen['weight'] ?? $question->weight);
             $domain = ($frozen['domain'] ?? $question->domain) ?: 'Umum';
             $type = $frozen['type'] ?? $question->type;
             $components[$domain] ??= ['correct' => 0, 'wrong' => 0, 'unanswered' => 0, 'total' => 0, 'earned' => 0.0, 'possible' => 0.0];
@@ -126,5 +127,58 @@ class ScoringService
         $attempt->update(['status' => 'scored', 'score_status' => 'calculated']);
 
         return $score;
+    }
+
+    /**
+     * Recalculate all submitted/scored attempts in an event using empirical IRT question difficulty weights.
+     */
+    public function recalculateEventIrt(int $eventId): int
+    {
+        $attempts = ExamAttempt::query()
+            ->whereIn('registration_id', DB::table('event_registrations')->where('event_id', $eventId)->select('id'))
+            ->whereIn('status', ['submitted', 'scored'])
+            ->with(['questions.question.options', 'questions.answer', 'registration', 'scoringFormula'])
+            ->get();
+
+        if ($attempts->isEmpty()) {
+            return 0;
+        }
+
+        $stats = [];
+        foreach ($attempts as $attempt) {
+            foreach ($attempt->questions as $snapshot) {
+                $question = $snapshot->question;
+                $frozen = $snapshot->question_snapshot;
+                $qid = $question->id;
+                $stats[$qid] ??= ['total' => 0, 'correct' => 0];
+                $stats[$qid]['total']++;
+
+                $selectedIds = collect($snapshot->answer?->selected_option_ids ?: ($snapshot->answer?->question_option_id ? [$snapshot->answer->question_option_id] : []))
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->sort()
+                    ->values();
+                $frozenOptions = collect($frozen['options'] ?? []);
+                $correctIds = $frozenOptions->isNotEmpty()
+                    ? $frozenOptions->filter(fn ($option) => (bool) $option['is_correct'])->pluck('id')->map(fn ($id) => (int) $id)->sort()->values()
+                    : $question->options->filter(fn ($option) => (bool) $option->getRawOriginal('is_correct'))->pluck('id')->map(fn ($id) => (int) $id)->sort()->values();
+
+                if ($selectedIds->isNotEmpty() && $selectedIds->all() === $correctIds->all()) {
+                    $stats[$qid]['correct']++;
+                }
+            }
+        }
+
+        $irtWeights = [];
+        foreach ($stats as $qid => $counts) {
+            $p = max(0.05, min(0.95, $counts['correct'] / max(1, $counts['total'])));
+            $irtWeights[$qid] = round(1.0 + (1.0 - $p) * 2.0, 4);
+        }
+
+        foreach ($attempts as $attempt) {
+            $this->calculate($attempt, $irtWeights);
+        }
+
+        return $attempts->count();
     }
 }
