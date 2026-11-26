@@ -21,7 +21,7 @@ class SpreadsheetImportTest extends TestCase
         Storage::fake('local');
         $this->seed(DatabaseSeeder::class);
         $admin = User::where('email', 'admin@tkajuara.id')->firstOrFail();
-        $subjectId = DB::table('subjects')->where('code', 'MAT')->value('id');
+        $subjectId = DB::table('subjects')->where('code', 'PK')->value('id');
         $file = new UploadedFile(public_path('downloads/template-import-soal.xlsx'), 'template-import-soal.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
         $this->actingAs($admin)->post('/admin/questions/import/spreadsheet/preview', ['subject_id' => $subjectId, 'file' => $file])->assertRedirect();
         $import = QuestionImport::latest('id')->firstOrFail();

@@ -152,7 +152,7 @@ if (app()->environment('local')) {
         $user = User::where('email', 'peserta@tkajuara.id')->firstOrFail();
         Auth::login($user);
         request()->session()->regenerate();
-        $session = DB::table('exam_sessions as es')->join('exam_packages as ep', 'ep.id', '=', 'es.exam_package_id')->join('subjects as s', 's.id', '=', 'ep.subject_id')->where('s.code', 'MAT')->value('es.id');
+        $session = DB::table('exam_sessions as es')->join('exam_packages as ep', 'ep.id', '=', 'es.exam_package_id')->join('subjects as s', 's.id', '=', 'ep.subject_id')->where('s.code', 'PK')->value('es.id');
 
         return app(ExamController::class)->start(request(), $session);
     });

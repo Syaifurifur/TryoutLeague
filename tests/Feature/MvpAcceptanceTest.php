@@ -94,7 +94,7 @@ class MvpAcceptanceTest extends TestCase
         $this->seed(DatabaseSeeder::class);
         $user = User::where('email', 'peserta@tkajuara.id')->firstOrFail();
         DB::table('events')->update(['subject_selection_close_at' => now()->subMinute()]);
-        $optional = DB::table('subjects')->where('category', 'optional')->value('id');
+        $optional = DB::table('subjects')->value('id');
         $this->actingAs($user)->from('/subjects')->put('/subjects', ['subjects' => [$optional]])->assertRedirect('/subjects')->assertSessionHasErrors('subjects');
     }
 
@@ -178,7 +178,7 @@ class MvpAcceptanceTest extends TestCase
     private function participantAndMathSession(): array
     {
         $user = User::where('email', 'peserta@tkajuara.id')->firstOrFail();
-        $session = DB::table('exam_sessions as es')->join('exam_packages as ep', 'ep.id', '=', 'es.exam_package_id')->join('subjects as s', 's.id', '=', 'ep.subject_id')->where('s.code', 'MAT')->value('es.id');
+        $session = DB::table('exam_sessions as es')->join('exam_packages as ep', 'ep.id', '=', 'es.exam_package_id')->join('subjects as s', 's.id', '=', 'ep.subject_id')->where('s.code', 'PK')->value('es.id');
 
         return [$user, $session];
     }

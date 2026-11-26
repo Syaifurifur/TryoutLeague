@@ -16,7 +16,7 @@ class ExamLifecycleTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
         $user = User::where('email', 'peserta@tkajuara.id')->firstOrFail();
-        $session = DB::table('exam_sessions as es')->join('exam_packages as ep', 'ep.id', '=', 'es.exam_package_id')->join('subjects as s', 's.id', '=', 'ep.subject_id')->where('s.code', 'MAT')->value('es.id');
+        $session = DB::table('exam_sessions as es')->join('exam_packages as ep', 'ep.id', '=', 'es.exam_package_id')->join('subjects as s', 's.id', '=', 'ep.subject_id')->where('s.code', 'PK')->value('es.id');
         $start = $this->actingAs($user)->post("/exam-sessions/$session/start");
         $attempt = DB::table('exam_attempts')->where('exam_session_id', $session)->first();
         $start->assertRedirect("/attempts/$attempt->id");

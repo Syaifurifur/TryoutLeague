@@ -35,7 +35,7 @@ class AnswerReviewTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
         $user = User::where('email', 'peserta@tkajuara.id')->firstOrFail();
-        $session = DB::table('exam_sessions as es')->join('exam_packages as ep', 'ep.id', '=', 'es.exam_package_id')->join('subjects as s', 's.id', '=', 'ep.subject_id')->where('s.code', 'MAT')->value('es.id');
+        $session = DB::table('exam_sessions as es')->join('exam_packages as ep', 'ep.id', '=', 'es.exam_package_id')->join('subjects as s', 's.id', '=', 'ep.subject_id')->where('s.code', 'PK')->value('es.id');
         DB::table('events')->update(['result_published_at' => null]);
         $questionId = DB::table('exam_package_questions')->where('exam_package_id', DB::table('exam_sessions')->where('id', $session)->value('exam_package_id'))->value('question_id');
         DB::table('questions')->where('id', $questionId)->update(['explanation' => 'Pembahasan asli saat ujian dimulai.']);

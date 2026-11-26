@@ -3,7 +3,7 @@ import { LayoutDashboard, BookOpenCheck, CalendarDays, ClipboardCheck, Trophy, A
 import { useState } from 'react';
 import Logo from '../Components/Logo';
 
-const participantNav=[['/dashboard','Beranda',LayoutDashboard],['/subjects','Mata Uji',BookOpenCheck],['/schedule','Jadwal & Tryout',CalendarDays],['/results','Hasil Tryout',ClipboardCheck],['/ranking','Ranking',Trophy],['/certificate','Sertifikat',Award],['/profile','Profil',UserRound]];
+const participantNav=[['/dashboard','Beranda',LayoutDashboard],['/subjects','Subtes SNBT',BookOpenCheck],['/schedule','Jadwal & Tryout',CalendarDays],['/results','Hasil & PTN',ClipboardCheck],['/ranking','Ranking',Trophy],['/certificate','Sertifikat',Award],['/profile','Profil & PTN',UserRound]];
 const adminNav=[['/admin','Dashboard',LayoutDashboard,['admin','super_admin','admin_event','analyst']],['/admin/events','Event & Jadwal',CalendarDays,['admin','super_admin','admin_event']],['/admin/participants','Peserta',Users,['admin','super_admin','admin_event']],['/admin/questions','Bank Soal',LibraryBig,['admin','super_admin','content_editor','reviewer']],['/admin/monitoring','Monitoring',MonitorDot,['admin','super_admin','admin_event','proctor']],['/admin/settings','Pengaturan',Settings2,['admin','super_admin']]];
 const schoolNav=[['/school','Dashboard Sekolah',LayoutDashboard],['/school','Peserta',Users]];
 
